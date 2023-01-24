@@ -1,7 +1,7 @@
 # License Reader
 
 The purpose of this task is to practice with reading, processing and writing to a file using Java *Reader/*Writer
-classes.
+classes and their buffered variants.
 
 Duration: _1.5 hours_
 
@@ -64,6 +64,7 @@ If `outputFile` exists, then it must be cleared. So no appending is allowed.
 * the order in the resulting file does not matter
 * if `Expires on` is omitted, then in `unlimited` must be used
 * `collectLicenses` does not throw any checked exception
+* `BufferedWriter`/`BufferedReader` must be used for IO operations
 
 ## Examples
 
