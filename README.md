@@ -1,7 +1,7 @@
 # License Reader
 
 The purpose of this task is to practice with reading, processing and writing to a file using Java *Reader/*Writer
-classes and their buffered variants.
+classes and their buffered variants, and using `try-with-resources`.
 
 Duration: _1.5 hours_
 
@@ -65,6 +65,7 @@ If `outputFile` exists, then it must be cleared. So no appending is allowed.
 * if `Expires on` is omitted, then in `unlimited` must be used
 * `collectLicenses` does not throw any checked exception
 * `BufferedWriter`/`BufferedReader` must be used for IO operations
+* All IO buffered streams must be defined using `try-with-resources` syntax
 
 ## Examples
 

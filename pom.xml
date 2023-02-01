@@ -38,6 +38,14 @@
       <version>0.21.0</version>
       <scope>test</scope>
     </dependency>
+
+    <dependency>
+      <groupId>fr.inria.gforge.spoon</groupId>
+      <artifactId>spoon-core</artifactId>
+      <version>9.0.0</version>
+      <scope>test</scope>
+    </dependency>
+
   </dependencies>
 
   <build>
