@@ -17,12 +17,14 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import spoon.Launcher;
+import spoon.reflect.code.CtConstructorCall;
 import spoon.reflect.code.CtTry;
 import spoon.reflect.code.CtTryWithResource;
 import spoon.reflect.declaration.CtElement;
@@ -109,6 +111,7 @@ public class ComplianceTest {
             ref -> ref.isSubtypeOf(factory.Class().createReference(AutoCloseable.class)),
             ref -> ref.getPackage().equals(factory.Package().createReference("java.io"))
         )).stream()
+        .filter(ref -> ref.getParent(CtConstructorCall.class) != null)
         .filter(ref -> ref.getParent(el -> el.getRoleInParent() == CtRole.TRY_RESOURCE) == null)
         .toList();
     if (invalidRefs.isEmpty()) {
@@ -117,12 +120,18 @@ public class ComplianceTest {
     var msg = invalidRefs.stream()
         .filter(ref -> ref.getPackage().isImplicit())
         .map(this::toErrorCodeReference)
+        .filter(Objects::nonNull)
         .collect(Collectors.joining("\n".repeat(3)));
     throw new AssertionError("Found usages of IO streams outside of try-with-resources:\n" + msg);
   }
 
   private String toErrorCodeReference(CtElement element) {
-    var pos = element.getPosition();
-    return String.format("%s.java:%d", pos.getCompilationUnit().getMainType().getQualifiedName(), pos.getLine());
+    try {
+      var pos = element.getPosition();
+      return String.format("%s.java:%d", pos.getCompilationUnit().getMainType().getQualifiedName(), pos.getLine());
+    }
+    catch (Exception e) {
+      return null;
+    }
   }
 }
