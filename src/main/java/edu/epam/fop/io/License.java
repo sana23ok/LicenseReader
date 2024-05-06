@@ -22,7 +22,6 @@
 //        String res = "";
 //        Map<String, String> licenseProperties = new HashMap<>();
 //        boolean inLicenseBlock = false;
-//        boolean hasStartMarker = false;
 //
 //        try (BufferedReader br = new BufferedReader(new FileReader(in))) {
 //            String line;
@@ -30,10 +29,11 @@
 //                line = line.trim();
 //                if (LICENSE_START_MARKER.equals(line)) {
 //                    inLicenseBlock = true;
-//                    hasStartMarker = true;
-//                } else if (LICENSE_START_MARKER.equals(line) && !inLicenseBlock) {
-//                    // If there's no start marker or no end marker, consider it invalid
-//                    throw new IllegalArgumentException("Invalid license structure: missing end marker in file: " + in.getName());
+//                } else if (LICENSE_END_MARKER.equals(line)) {
+//                    if (!inLicenseBlock) {
+//                        throw new IllegalArgumentException("Invalid license file: " + in.getName());
+//                    }
+//                    break;
 //                } else if (inLicenseBlock && line.contains(":")) {
 //                    String[] parts = line.split(":", 2);
 //                    if (parts.length == 2) {
@@ -41,27 +41,23 @@
 //                        String value = parts[1].trim();
 //                        licenseProperties.put(key, value);
 //                    }
-//                } else if (LICENSE_START_MARKER.equals(line)) {
-//                    inLicenseBlock = false;
-//                    break;
 //                }
 //            }
 //
-//
-//
-//            if (!hasStartMarker || !inLicenseBlock) {
-//                throw new IllegalArgumentException("Invalid license file: missing license block or end marker in file: " + in.getName());
+//            if (!inLicenseBlock) {
+//                throw new IllegalArgumentException("Missing license block in file: " + in.getName());
 //            }
 //
-//            // Check mandatory fields
 //            if (!licenseProperties.containsKey("License")) {
-//                throw new IllegalArgumentException("Missing 'License' in file: " + in.getName());
+//                throw new IllegalArgumentException("Missing License in file: " + in.getName());
 //            }
+//
 //            if (!licenseProperties.containsKey("Issued by")) {
-//                throw new IllegalArgumentException("Missing 'Issued by' in file: " + in.getName());
+//                throw new IllegalArgumentException("Missing Issued by in file: " + in.getName());
 //            }
+//
 //            if (!licenseProperties.containsKey("Issued on")) {
-//                throw new IllegalArgumentException("Missing 'Issued on' in file: " + in.getName());
+//                throw new IllegalArgumentException("Missing Issued on in file: " + in.getName());
 //            }
 //
 //            String licenseName = licenseProperties.get("License");
@@ -74,12 +70,13 @@
 //                    in.getName(), licenseName, issuedBy, issuedOn, expiresOn
 //            );
 //
-//        } catch (IOException e) {
-//            throw new IllegalArgumentException("Error processing file: " + in.getAbsolutePath() + " - " + e.getMessage());
+//        } catch (Exception e) {
+//            System.err.println("Error processing file: " + in.getAbsolutePath() + " - " + e.getMessage());
 //        }
 //
 //        return res;
 //    }
+//
 //
 //
 //
@@ -181,13 +178,14 @@
 //public class License{
 //    private static void processDirectory(File dir, BufferedWriter bw) {
 //        if (!dir.exists() || !dir.canExecute()) {
-//            System.err.println("Directory is not executable or does not exist.");
-//            return;
+//            throw new IllegalArgumentException("Directory is not executable or does not exist.");
+//            //return;
 //        }
 //
 //        File[] items = dir.listFiles();
 //        if (items == null) {
-//            return; // Handle cases where permissions or other issues prevent reading
+//            throw new IllegalArgumentException();
+//            //return; // Handle cases where permissions or other issues prevent reading
 //        }
 //
 //        for (File item : items) {
@@ -249,7 +247,7 @@
 //                            }
 //                        } catch (IllegalArgumentException e) {
 //                            // Ignore non-license files and continue processing
-//                            //throw new IllegalArgumentException(e);
+//                            throw new IllegalArgumentException(e);
 //                        }
 //                    }
 //                }
@@ -260,14 +258,14 @@
 //                    bw.write(pr.processFile());
 //                } catch (IllegalArgumentException e) {
 //                    // Ignore non-license files
-//                    //throw new IllegalArgumentException(e);
+//                    throw new IllegalArgumentException(e);
 //                }
 //            }
 //            bw.close(); // Close the writer after writing all data
 //        } catch (IOException e) {
 //            // Handle the potential exception
-//            System.err.println("An error occurred while processing files.");
-//            e.printStackTrace();
+//            throw new IllegalArgumentException("An error occurred while processing files.");
+//            //e.printStackTrace();
 //        }
 //    }
 //
