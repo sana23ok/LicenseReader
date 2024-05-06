@@ -1,10 +1,11 @@
 package edu.epam.fop.io;
 import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.StandardOpenOption;
 import java.util.*;
 
 public class LicenseReader {
-
-    private void processDirectory(File dir, BufferedWriter bw) throws IOException {
+    private static void processDirectory(File dir, BufferedWriter bw) {
         if (!dir.exists() || !dir.canExecute()) {
             System.err.println("Directory is not executable or does not exist.");
             return;
@@ -22,55 +23,77 @@ public class LicenseReader {
                 // Process individual files
                 String result = new ProcessFile(item).processFile();
                 if (result != null) {
-                    bw.write(result); // Write the processed result to the output file
+                    try {
+                        bw.write(result); // Write the processed result to the output file
+                    } catch (IOException e) {
+                        System.err.println("Error writing to the output file: " + e.getMessage());
+                    }
                 }
             }
         }
     }
 
-    public void validateFiles(File root, File outputFile) {
-        // collectLicenses method should validate that root:
-        // not null root, outputFile
-        if (root == null || outputFile == null)
+    public static void validateFiles(File root, File outputFile){
+        // collectLicenses метод повинен підтвердити, що root:
+        //не нульовий root, outputFile
+        if (root==null || outputFile==null)
             throw new IllegalArgumentException("Path cant be null!");
 
-        // exists, readable
-        if (!root.exists() || !root.canRead())
+        //існує, читабельний
+        if(!root.exists() || !root.canRead())
             throw new IllegalArgumentException("Path does not exist or cant be readable!");
 
-        // if it's a directory, it's executable
-        if (root.isDirectory() && !root.canExecute())
+        //якщо це каталог, то він є виконуваним
+        if(root.isDirectory() && !root.canExecute())
             throw new IllegalArgumentException("Root is not a executable directory!");
     }
 
-    public void collectLicenses(File root, File outputFile) {
+    public static void collectLicenses(File root, File outputFile){
         validateFiles(root, outputFile);
 
         try {
-            new FileWriter(outputFile).close();
-        } catch (IOException e) {
-            // Handle the potential exception
-            System.out.println("An error occurred.");
-            e.printStackTrace();
-        }
-
-        try (BufferedWriter bw = new BufferedWriter(new FileWriter(outputFile))) {
+            // Clear the output file before writing new data
+            BufferedWriter bw = Files.newBufferedWriter(outputFile.toPath(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
             // Process files in the root directory
             if (root.isDirectory()) {
-                // Process directories and files recursively
-                processDirectory(root, bw);
+                File[] items = root.listFiles();
+                if (items == null) {
+                    return; // Handle cases where permissions or other issues prevent reading
+                }
+
+                for (File item : items) {
+                    if (item.isDirectory()) {
+                        processDirectory(item, bw); // Recursive traversal
+                    } else if (item.isFile()) {
+                        // Process individual files
+                        ProcessFile p = new ProcessFile(item);
+                        try {
+                            String result = p.processFile();
+                            if (result != null) {
+                                bw.write(result); // Write the processed result to the output file
+                            }
+                        } catch (IllegalArgumentException e) {
+                            // Ignore non-license files and continue processing
+                        }
+                    }
+                }
             } else {
                 // Process single file
                 ProcessFile pr = new ProcessFile(root);
-                bw.write(pr.processFile());
+                try {
+                    bw.write(pr.processFile());
+                } catch (IllegalArgumentException e) {
+                    // Ignore non-license files
+                }
             }
+            bw.close(); // Close the writer after writing all data
         } catch (IOException e) {
             // Handle the potential exception
             System.err.println("An error occurred while processing files.");
             e.printStackTrace();
         }
 
-        try (BufferedReader br = new BufferedReader(new FileReader(outputFile))) {
+        try (BufferedReader br = new BufferedReader(new FileReader(String.valueOf(outputFile.toPath())))) {
             String line;
             while ((line = br.readLine()) != null) {
                 System.out.println(line);
@@ -79,6 +102,7 @@ public class LicenseReader {
             throw new IllegalArgumentException(e);
         }
     }
+
 }
 
 

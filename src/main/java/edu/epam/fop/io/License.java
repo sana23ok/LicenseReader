@@ -1,16 +1,12 @@
 package edu.epam.fop.io;
 import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.StandardOpenOption;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
-//"java.lang",
-//"java.util",
-//"java.io",
-//"java.time",
-//"java.time.format",
-//"edu.epam.fop.io"
 
-public class ProcessFile {
+class ProcessFile {
     private static File in;
     private static  File out;
     private static final String LICENSE_START_MARKER = "---";
@@ -156,132 +152,111 @@ public class ProcessFile {
     }
 }
 
+public class License{
 
-/*package edu.epam.fop.io;
-
-import java.io.*;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
-
-public class ProcessFile {
-    private static final String LICENSE_START_MARKER = "---";
-
-    private File in;
-    private BufferedWriter out; // Use BufferedWriter for output
-
-    public ProcessFile(File root, BufferedWriter outputWriter) {
-        this.in = root;
-        this.out = outputWriter; // Assign the BufferedWriter to output
-    }
-
-    public String processFile() {
-        if (!isLicenseFile(in)) {
-            return null; // Return null if not a valid license file
+    private static void processDirectory(File dir, BufferedWriter bw) {
+        if (!dir.exists() || !dir.canExecute()) {
+            System.err.println("Directory is not executable or does not exist.");
+            return;
         }
 
-        if (!checkAllDependencies(in)) {
-            System.err.println("Invalid license dependencies in file: " + in.getAbsolutePath());
-            return null; // Return null if required dependencies are missing
+        File[] items = dir.listFiles();
+        if (items == null) {
+            return; // Handle cases where permissions or other issues prevent reading
         }
 
-        return parseFile(in); // Get the license information to write
-    }
-
-    private boolean isLicenseFile(File file) {
-        boolean hasStartMarker = false;
-        boolean hasEndMarker = false;
-
-        try (BufferedReader br = new BufferedReader(new FileReader(file))) {
-            String line;
-            while ((line = br.readLine()) != null) {
-                if (line.trim().equals(LICENSE_START_MARKER)) {
-                    if (!hasStartMarker) {
-                        hasStartMarker = true;
-                    } else {
-                        hasEndMarker = true;
-                        break; // Break when both start and end markers are found
+        for (File item : items) {
+            if (item.isDirectory()) {
+                processDirectory(item, bw); // Recursive traversal
+            } else if (item.isFile()) {
+                // Process individual files
+                String result = new ProcessFile(item).processFile();
+                if (result != null) {
+                    try {
+                        bw.write(result); // Write the processed result to the output file
+                    } catch (IOException e) {
+                        System.err.println("Error writing to the output file: " + e.getMessage());
                     }
                 }
             }
-        } catch (IOException e) {
-            System.err.println("Error reading file: " + e.getMessage());
         }
-
-        return hasStartMarker && hasEndMarker;
     }
 
-    private static boolean checkDateFormat(String date) {
-        return date != null && date.matches("\\d{4}-\\d{2}-\\d{2}"); // yyyy-mm-dd format
+    public static void validateFiles(File root, File outputFile){
+        // collectLicenses метод повинен підтвердити, що root:
+        //не нульовий root, outputFile
+        if (root==null || outputFile==null)
+            throw new IllegalArgumentException("Path cant be null!");
+
+        //існує, читабельний
+        if(!root.exists() || !root.canRead())
+            throw new IllegalArgumentException("Path does not exist or cant be readable!");
+
+        //якщо це каталог, то він є виконуваним
+        if(root.isDirectory() && !root.canExecute())
+            throw new IllegalArgumentException("Root is not a executable directory!");
     }
 
-    private static boolean checkAllDependencies(File file) {
-        boolean hasLicense = false;
-        boolean hasIssuedOn = false;
-        boolean hasIssuedBy = false;
+    public static void collectLicenses(File root, File outputFile){
+        validateFiles(root, outputFile);
 
-        try (BufferedReader br = new BufferedReader(new FileReader(file))) {
-            String line;
-            while ((line = br.readLine()) != null) {
-                if (line.startsWith("License:")) {
-                    hasLicense = true;
-                } else if (line.startsWith("Issued on:")) {
-                    hasIssuedOn = true;
-                    String[] parts = line.split(":");
-                    if (parts.length > 1) {
-                        String date = parts[1].trim();
-                        if (!checkDateFormat(date)) {
-                            return false; // Invalid date format
+        try {
+            // Clear the output file before writing new data
+            BufferedWriter bw = Files.newBufferedWriter(outputFile.toPath(), StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+            // Process files in the root directory
+            if (root.isDirectory()) {
+                File[] items = root.listFiles();
+                if (items == null) {
+                    return; // Handle cases where permissions or other issues prevent reading
+                }
+
+                for (File item : items) {
+                    if (item.isDirectory()) {
+                        processDirectory(item, bw); // Recursive traversal
+                    } else if (item.isFile()) {
+                        // Process individual files
+                        ProcessFile p = new ProcessFile(item);
+                        try {
+                            String result = p.processFile();
+                            if (result != null) {
+                                bw.write(result); // Write the processed result to the output file
+                            }
+                        } catch (IllegalArgumentException e) {
+                            // Ignore non-license files and continue processing
                         }
                     }
-                } else if (line.startsWith("Issued by:")) {
-                    hasIssuedBy = true;
+                }
+            } else {
+                // Process single file
+                ProcessFile pr = new ProcessFile(root);
+                try {
+                    bw.write(pr.processFile());
+                } catch (IllegalArgumentException e) {
+                    // Ignore non-license files
                 }
             }
+            bw.close(); // Close the writer after writing all data
         } catch (IOException e) {
-            System.err.println("Error reading file: " + e.getMessage());
+            // Handle the potential exception
+            System.err.println("An error occurred while processing files.");
+            e.printStackTrace();
         }
 
-        return hasLicense && hasIssuedOn && hasIssuedBy;
-    }
-
-    private static String parseFile(File in) {
-        Map<String, String> licenseProperties = new HashMap<>();
-        boolean inLicenseBlock = false;
-
-        try (BufferedReader br = new BufferedReader(new FileReader(in))) {
+        try (BufferedReader br = new BufferedReader(new FileReader(String.valueOf(outputFile.toPath())))) {
             String line;
             while ((line = br.readLine()) != null) {
-                line = line.trim();
-                if (LICENSE_START_MARKER.equals(line)) {
-                    inLicenseBlock = !inLicenseBlock;
-                } else if (inLicenseBlock && line.contains(":")) {
-                    String[] parts = line.split(":", 2);
-                    if (parts.length == 2) {
-                        String key = parts[0].trim();
-                        String value = parts[1].trim();
-                        licenseProperties.put(key, value);
-                    }
-                }
-            }
-
-            if (licenseProperties.containsKey("License") &&
-                    licenseProperties.containsKey("Issued by") &&
-                    licenseProperties.containsKey("Issued on")) {
-                String licenseName = licenseProperties.get("License");
-                String issuedBy = licenseProperties.get("Issued by");
-                String issuedOn = licenseProperties.get("Issued on");
-                String expiresOn = licenseProperties.getOrDefault("Expires on", "unlimited");
-
-                return String.format(
-                        "License for %s is %s issued by %s [%s - %s]%n",
-                        in.getName(), licenseName, issuedBy, issuedOn, expiresOn
-                );
+                System.out.println(line);
             }
         } catch (IOException e) {
-            System.err.println("Error parsing file: " + e.getMessage());
+            throw new IllegalArgumentException(e);
         }
-
-        return null; // Return null if parsing fails or dependencies are missing
     }
-}*/
+
+
+    public static void main(String[] args){
+        collectLicenses(new File("target/test-classes/case_03/input"),
+                new File("src/main/java/edu/epam/fop/io/res"));
+    }
+}
+
+
